@@ -11,7 +11,7 @@ and open the template in the editor.
     </head>
     <body>
         <?php
-        echo "PHP project for XAL_IT_kabelplani!";
+        echo "PHP project for XS_IT_kabelplani!";
         ?>
     </body>
 </html>
