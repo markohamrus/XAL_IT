@@ -99,7 +99,7 @@ class PhpSerial
                         ) === 0
                 ) {
                     $this->_winDevice = "COM" . $matches[1];
-                    $this->_device = "\\.com" . $matches[1];
+                    $this->_device = "\\\.\com" . $matches[1];
                     $this->_dState = SERIAL_DEVICE_SET;
                     return true;
                 }
@@ -138,7 +138,7 @@ class PhpSerial
             );
             return false;
         }
-        $this->_dHandle = @fopen($this->_device, $mode);
+        $this->_dHandle = @fopen($this->_winDevice, $mode);
         if ($this->_dHandle !== false) {
             stream_set_blocking($this->_dHandle, 0);
             $this->_dState = SERIAL_DEVICE_OPENED;
