@@ -8,25 +8,20 @@ and open the template in the editor.
     <head>
         <meta charset="UTF-8">
         <title>COM port</title>
-        
+
         <script>
-function Test()
-{
-    <?php
-        $datei = fopen("test.txt","w") or exit ("Unable to open file!"); 
-        fwrite ($datei , "Hello World");
-        fclose ($datei);
-    ?>
-}
-</script>
+        </script>
     </head>
     <body>
-        <h1>Hello</h1>
+        <h1>Branje podatkov</h1>
         <?php
         include "php_serial.php";
         include('check_active_comm_port.class.php');
+        ini_set('max_execution_time',300);
         // Let's start the class
         $serial = new phpSerial;
+
+        $odprto = false;
 
         //Get the port and baud rate
         $com = new windows_comm_port();
@@ -35,10 +30,12 @@ function Test()
 
         $count = count($comm_list);
         $count2 = count($baud_list);
-        
-        $data;
 
-        echo '<form action="' . $_SERVER['PHP_SELF'] . '" method="post">
+        $data;
+        
+        echo '<iframe name="frame" style="display:none;"></iframe>';
+
+        echo '<form action="' . $_SERVER['PHP_SELF'] . '" method="post" target="frame">
 	Port <select name="comm">';
         for ($i = 0; $i < $count; $i++) {
             echo '<option value="' . $comm_list[$i] . '">' . $comm_list[$i] . '</option>';
@@ -47,22 +44,32 @@ function Test()
         for ($i = 0; $i < $count2; $i++) {
             echo '<option value="' . $baud_list[$i] . '">' . $baud_list[$i] . '</option>';
         }
-        echo '</select> <input type="submit" onClick="Test()" value="Odpri" />
+        echo '</select> <input type="submit" name="gumb" id="gumb_open"  value="Odpri" />
         <hr/>            
 	</form>
 	<hr />';
+
+
+        echo '<form action="' . $_SERVER['PHP_SELF'] . '"method="post" target="frame">
+            
+                <input type="submit" name="play"  value=">"/>
+             </form>';
         
+
         // First we must specify the device. This works on both linux and windows (if
         // your linux serial device is /dev/ttyS0 for COM1, etc)
-
         //Z klikom na gumb "Odpri" odpremo COM port na določenih vratih z določeno "baud rate"
         //TO-DO dodaj še ostale parametre kot so: stop bit, pariteto itd...
+        if($_SERVER['REQUEST_METHOD'] === 'POST')
+        {
         if ($_POST['comm'] == 'None') {
             echo 'There\'s no active comm-port that can be used. Please check the connection<br />
 		(Right Click on My Computer->Select Properties->Hardware->Device Manager->Ports (COM & LPT))<br />
 		If there is a comm-port is active, make sure that it is not being used';
         } else {
             if (isset($_POST['comm'])) {
+
+
                 $serial->deviceSet($_POST['comm']);
                 $serial->confBaudRate(2400);
                 $serial->confParity("none");
@@ -72,42 +79,59 @@ function Test()
 
                 // Then we need to open it
                 $serial->deviceOpen();
-
-                // To write into
-                //$serial->sendMessage("Hello!");
-
-                //TO-DO podatki se nalagajo različno dolgo, glede na volumen. Poskrbeti za zanko, ki traja dokler se VSI podatki ne prenesejo.
-                // Or to read from
-                //$read = $serial->readPort();
-                $bla = 1;
-                while($serial->readPort())
-                {
-                    $f = fopen("textfile.txt", "w");
-                    fwrite($f, $bla + 1);
+                $odprto = true;
+                $podatki;
+                $cas = time();
+                $minute = $cas + (1.5 * 60);
+                
+                $time = date('m-d-Y H:i:s', $cas);
+                $finish_time = date('m-d-Y H:i:s', $minute);
+                
+                $f = fopen("textfile.txt", "w", "a") or die ("Unable to open file!");
+                while ($time < $finish_time) {
+                    $time = date('m-d-Y H:i:s', time());
+                    //Pobiramo podatke iz serijskega porta
+                    $podatki = fwrite($f, $serial->readPort());
                     
                 }
+                $serial->deviceClose();
                 fclose($f);
                 
-                
+                echo '<script>alert("Podatki prebrani!")</script>';
                 ?>
-                <!--<textarea rows="4" cols="50" id="textarea1" name="data" ><?php echo $read ?></textarea>-->
+                    <textarea><?php $myfile = fopen("textfile.txt", "r") or die("Unable to open file!");
+                                echo fread($myfile,filesize("textfile.txt"));
+                                fclose($myfile); ?></textarea>
                 <?php
                 
-                //Odpremo datoteko za pisanje podatkov 
-                //TO-DO datoteka mora biti zaščitena in read ONLY
-                // Open the text file
-                //$f = fopen("textfile.txt", "w");
-                
-                //fwrite($f, $read); 
-                
-                // Close the text file
-                //fclose($f);
-
-                //TO-DO verjetno se COM port "pokvari" ker je v vsakem primeru potrebno na koncu zapreti povezavo. 
-                // If you want to change the configuration, the device must be closed
-                $serial->deviceClose();
             } else {
                 echo 'Prišlo je do napake!';
+            }
+        }
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (isset($_POST["play"])) {
+                if ($odprto) 
+                {
+                    $podatki;
+                    $time = time();
+                    $finish_time = time() + 15;
+                    while ($time < $finish_time) {
+                        $cas = time();
+                        $time = date('m-d-Y H:i:s', $cas);
+                        //Pobiramo podatke iz serijskega porta
+                        $podatki = $podatki + $serial->readPort();
+                    }
+                    $serial->deviceClose();
+                    $f = fopen("textfile2.txt", "w");
+                    fwrite($f, $podatki);
+                    fclose($f);
+
+                    echo '<script>alert("Imeli ste 1.5 minute za branje podatkov.")</script>';
+                } else {
+                    echo '<script>alert("Najprej izberite in odprite port.")</script>';
+                }
             }
         }
         ?>
